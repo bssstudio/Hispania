@@ -1,4 +1,4 @@
-module Main where
+module TestMain where
 
 import Hispania.Types
 import Hispania.TestTypes
