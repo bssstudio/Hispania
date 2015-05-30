@@ -1,4 +1,9 @@
+{-# LANGUAGE StandaloneDeriving #-}
 module Hispania.Printer where
+
+import Hispania.Types
+import qualified Data.ByteString.Char8 as BS
+import Data.Maybe (fromJust)
 
 instance Show URI where
    show (RawURI schema specific) = (BS.unpack schema) ++ ":" ++ (BS.unpack specific)
@@ -49,3 +54,5 @@ instance Show ProtoVersion where
 showParams :: Params -> String
 showParams = (foldr (++) "") . (map (\(x, y) -> (show x) ++ "=" ++ (show y)) )
 
+deriving instance Show ClientTranKey
+deriving instance Show ServerTranKey 

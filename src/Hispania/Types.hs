@@ -6,9 +6,9 @@ import Data.List
 import Data.Word
 import Control.Monad
 
-data Transport = TCP | UDP | SCTP | TLS | Unknown BS.ByteString deriving (Eq, Ord, Show)
+data Transport = TCP | UDP | SCTP | TLS | Unknown BS.ByteString deriving (Eq, Ord)
 
-data RequestMethod = INVITE | ACK | BYE | CANCEL | REGISTER | OPTIONS | SUBSCRIBE | NOTIFY | MESSAGE | INFO | REFER | PUBLISH | PRACK | Custom BS.ByteString deriving (Eq, Ord, Show)
+data RequestMethod = INVITE | ACK | BYE | CANCEL | REGISTER | OPTIONS | SUBSCRIBE | NOTIFY | MESSAGE | INFO | REFER | PUBLISH | PRACK | Custom BS.ByteString deriving (Eq, Ord)
 
 methodMapStr :: [(RequestMethod, String)]
 methodMapStr = 
@@ -31,14 +31,14 @@ methodMapStr =
 methodMapBstr = map (\x -> ( (fst x), (BS.pack (snd x)) ) ) methodMapStr
 
 
-data ProtoVersion = ProtoVersion BS.ByteString BS.ByteString deriving (Eq, Ord, Show)
+data ProtoVersion = ProtoVersion BS.ByteString BS.ByteString deriving (Eq, Ord)
 
 
 defaultProtoVersion = (ProtoVersion (BS.pack "SIP") (BS.pack "2.0") )
 
 data URI = 
      RawURI BS.ByteString BS.ByteString 
-     | SipURI {secure::Bool, uriUser::BS.ByteString, uriPassword::BS.ByteString, uriHost::BS.ByteString, uriPort:: Maybe Word16, uriParams::Params } deriving (Eq, Ord, Show)
+     | SipURI {secure::Bool, uriUser::BS.ByteString, uriPassword::BS.ByteString, uriHost::BS.ByteString, uriPort:: Maybe Word16, uriParams::Params } deriving (Eq, Ord)
 
 type Params = [(BS.ByteString,BS.ByteString)]
 
@@ -48,7 +48,7 @@ getParam = lookup
 addParam :: BS.ByteString -> BS.ByteString -> Params -> Params
 addParam name value params = (name,value):params
 
-data SipAddress = SipAddress { displayableName:: Maybe BS.ByteString, addrURI::URI, addrParams::Params} deriving (Eq, Ord, Show)
+data SipAddress = SipAddress { displayableName:: Maybe BS.ByteString, addrURI::URI, addrParams::Params} deriving (Eq, Ord)
 
 addAddressParam :: BS.ByteString -> BS.ByteString -> SipAddress -> SipAddress
 addAddressParam name value (SipAddress displayName uri params) = SipAddress displayName uri (addParam name value params)
@@ -56,16 +56,16 @@ addAddressParam name value (SipAddress displayName uri params) = SipAddress disp
 addURIParam :: BS.ByteString -> BS.ByteString -> URI -> URI
 addURIParam name value (SipURI secure user password host port params) = SipURI secure user password host port (addParam name value params)
 
-data ViaValue = ViaValue {viaProtoVersion::ProtoVersion, viaTransport::Transport, viaHost::BS.ByteString, viaPort::Word16, viaParams::Params} deriving (Eq, Ord, Show)
+data ViaValue = ViaValue {viaProtoVersion::ProtoVersion, viaTransport::Transport, viaHost::BS.ByteString, viaPort::Word16, viaParams::Params} deriving (Eq, Ord)
 
-data CSeqValue = CSeqValue Int RequestMethod deriving (Eq, Ord, Show)
+data CSeqValue = CSeqValue Int RequestMethod deriving (Eq, Ord)
 
 data Header = 
      GenericHeader BS.ByteString
      | AddressHeader SipAddress
      | CSeqHeader CSeqValue
      | IntHeader Int
-     | ViaHeader ViaValue deriving (Eq, Ord, Show)
+     | ViaHeader ViaValue deriving (Eq, Ord)
 
 toVia :: Header -> Maybe ViaValue
 toVia (ViaHeader viaVal) = Just viaVal
@@ -81,11 +81,11 @@ getHeaderVal _ = BS.pack "no_val"
 
 
 data Request a = 
-     Request {reqMethod :: RequestMethod, reqURI :: URI, reqVersion :: ProtoVersion, reqHeaders :: [(BS.ByteString, Header)], reqBody :: a } deriving (Show)
+     Request {reqMethod :: RequestMethod, reqURI :: URI, reqVersion :: ProtoVersion, reqHeaders :: [(BS.ByteString, Header)], reqBody :: a }
 
 
 data Response a = 
-     Response { respVersion :: ProtoVersion, respStatus :: Int, respReason :: BS.ByteString, respHeaders :: [(BS.ByteString, Header)], respBody :: a } deriving (Show)
+     Response { respVersion :: ProtoVersion, respStatus :: Int, respReason :: BS.ByteString, respHeaders :: [(BS.ByteString, Header)], respBody :: a } 
 
 class Message a where
   getAllHeaders :: a -> [(BS.ByteString, Header)]
@@ -128,18 +128,18 @@ defaultReason 302 = BS.pack "Moved temporary"
 
 
 
-data ClientTranKey = ClientTranKey {clientTranMethod::RequestMethod, clientTranBranch::BS.ByteString} deriving (Eq, Ord, Show)
+data ClientTranKey = ClientTranKey {clientTranMethod::RequestMethod, clientTranBranch::BS.ByteString} deriving (Eq, Ord)
 
 getClientTranKey :: (Message a) => a -> Maybe ClientTranKey
 getClientTranKey message = (getTopHeader message (BS.pack "Via")) >>= toVia >>= (Just . viaParams) >>= (getParam (BS.pack "branch")) >>= (Just . ClientTranKey (getMethod message))
 
-data ServerTranKey = ServerTranKey {serverTranMethod::RequestMethod, serverTranBranch::BS.ByteString} deriving (Eq, Ord, Show)
+data ServerTranKey = ServerTranKey {serverTranMethod::RequestMethod, serverTranBranch::BS.ByteString} deriving (Eq, Ord)
 
 getServerTranKey :: (Message a) => a -> Maybe ServerTranKey
 getServerTranKey message = (getTopHeader message (BS.pack "Via")) >>= toVia >>= (Just . viaParams) >>= (getParam (BS.pack "branch")) >>= (Just . ServerTranKey (getMethod message))
 
 
-data DialogKey = DialogKey{callId::BS.ByteString, localTag::BS.ByteString, remoteTag::BS.ByteString} deriving (Eq, Ord, Show)
+data DialogKey = DialogKey{callId::BS.ByteString, localTag::BS.ByteString, remoteTag::BS.ByteString} deriving (Eq, Ord)
 
 getDialogKeyFromReq :: Request a -> Maybe DialogKey
 getDialogKeyFromReq req = getDialogKey req True
