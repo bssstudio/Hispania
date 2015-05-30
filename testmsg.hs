@@ -1,0 +1,4 @@
+let inviteReq = unlines $ map (++"\r") ["INVITE sip:bob@biloxi.com SIP/2.0","Via: SIP/2.0/UDP pc33.atlanta.com;branch=z9hG4bK776asdhds","Max-Forwards: 70","To: Bob <sip:bob@biloxi.com>","From: Alice <sip:alice@atlanta.com>;tag=1928301774","Call-ID: a84b4c76e66710@pc33.atlanta.com","CSeq: 314159 INVITE","Contact: <sip:alice@pc33.atlanta.com>","Record-Route: test@test.com, test3@test.com","Record-Route: test2@test2.com","Content-Type: application/sdp","Content-Length: 5", "", "","BlaBlaBla"]
+
+
+let resp200 =  unlines $ map (++"\r") ["SIP/2.0 200 OK", "Via: SIP/2.0/UDP 192.168.1.30:5060;received=66.87.48.68", "From: sip:sip2@iptel.org", "To: sip:sip2@iptel.org;tagi=794fe65c16edfdf45da4fc39a5d2867c.b713", "Call-ID: 2443936363@192.168.1.30", "CSeq: 63629 REGISTER", "Contact: <sip:sip2@66.87.48.68:5060;transport=udp>;q=0.00;expires=120", "Server: Sip EXpress router (0.8.11pre21xrc (i386/linux))", "Content-Length: 0", ""]
