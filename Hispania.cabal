@@ -17,7 +17,7 @@ extra-source-files:  README.md
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     Main, TestMain, TestRegistar, Hispania.Parser, Hispania.Printer, Hispania.Server, Hispania.Stack, Hispania.TestParser, Hispania.TestStack, Hispania.TestStackDeprecated, Hispania.TestTransport, Hispania.TestTypes, Hispania.Transport, Hispania.Types, Hispania.Util, Hispania.Examples.Registar
+  exposed-modules:     Main, Hispania.Parser, Hispania.Printer, Hispania.Stack, Hispania.TestParser,  Hispania.Transport, Hispania.Types, Hispania.Util
   -- other-modules:       
   -- other-extensions:    
   build-depends:       base >=4.8 && <4.9
