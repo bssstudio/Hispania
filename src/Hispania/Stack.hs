@@ -14,6 +14,7 @@ import Hispania.Types
 import Hispania.Parser
 import Hispania.Transport
 import Hispania.Util
+import Hispania.Printer
 
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString as BSW
@@ -128,6 +129,11 @@ data UAContext = UAContext {
 type StackTask a = Stack -> IO (a, Stack)
 
 newtype StackAction a = StackAction{runStackAction :: StackTask a}
+
+instance Functor StackAction 
+instance Applicative StackAction 
+
+
 
 instance Monad StackAction where
   return x = StackAction (\stack -> return (x, stack))
@@ -409,6 +415,9 @@ type ResponseHandler = Response () -> ClientCtxRef -> SipAction ()
 
 newtype SipAction a = SipAction{runSipAction :: SessionTask a}
 
+instance Functor SipAction where
+instance Applicative SipAction where
+
 instance Monad SipAction where
   return x = SipAction (\sess stack -> return (x, sess, stack))
   k >>= b  = SipAction (\sess stack -> do
@@ -423,6 +432,9 @@ ioSipAction ioAction = SipAction (\session stack -> do
                                   )
   
 newtype PureSipAction a = PureSipAction{runPureSipAction :: PureSessionTask a}
+
+instance Functor PureSipAction 
+instance Applicative PureSipAction 
 
 instance Monad PureSipAction where
   return x = PureSipAction (\sess stack -> (x, sess, stack))
