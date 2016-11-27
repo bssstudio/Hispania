@@ -1,20 +1,21 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Hispania.TestTypes where
 
-import Hispania.Types
-import Data.ByteString.Char8 as BS
+import           Data.ByteString.Char8 as BS
+import           Hispania.Types
 
 -- testFrom = (GenericHeader (BS.pack "From") (BS.pack "<sip:from@from>"))
-testFrom = ((BS.pack "From"), AddressHeader (SipAddress (Just (BS.pack "FullName")) (SipURI False (BS.pack "fromusr") BS.empty (BS.pack "fromhost") (Just 5060) []) []))
+testFrom = ("From", AddressHeader (SipAddress (Just "FullName") (SipURI False "fromusr" BS.empty "fromhost" (Just 5060) []) []))
 
-testTo = ((BS.pack "To"), (GenericHeader (BS.pack"<sip:to@to>")))
+testTo = ("To", (GenericHeader "<sip:to@to>"))
 
-testCallId = ((BS.pack "Call-ID"), (GenericHeader (BS.pack "235205720357")))
+testCallId = ("Call-ID", (GenericHeader "235205720357"))
 
-testReq = Request INVITE (RawURI (BS.pack "sip") (BS.pack "user@host") ) defaultProtoVersion [testFrom, testTo, testCallId] (BS.pack "SDP")
+testReq = Request INVITE (RawURI "sip" "user@host" ) defaultProtoVersion [testFrom, testTo, testCallId] "SDP"
 
-topFrom = getTopHeader testReq (BS.pack "From")
+topFrom = getTopHeader testReq "From"
 
-topTo = getTopHeader testReq (BS.pack "To")
+topTo :: Maybe Header
+topTo = getTopHeader testReq "To"
 
-topCallId = getTopHeader testReq (BS.pack "Call-ID")
-
+topCallId = getTopHeader testReq "Call-ID"

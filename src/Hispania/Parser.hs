@@ -1,25 +1,26 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Hispania.Parser where
 
-import qualified Data.Attoparsec.ByteString as ATP
+import           Blaze.ByteString.Builder
+import           Control.Applicative
+import           Control.Monad
+import qualified Data.Attoparsec.ByteString       as ATP
 import qualified Data.Attoparsec.ByteString.Char8 as ATPC
-import Data.Attoparsec.Combinator
-import qualified Data.ByteString.Char8 as BS
-import Data.Word
-import Data.Char (ord)
-import Data.Maybe
-import Data.Monoid
-import qualified Data.Map as Map
-import Hispania.Types
-import Blaze.ByteString.Builder
-import Control.Applicative
-import Control.Monad
+import           Data.Attoparsec.Combinator
+import qualified Data.ByteString.Char8            as BS
+import           Data.Char                        (ord)
+import qualified Data.Map                         as Map
+import           Data.Maybe
+import           Data.Monoid
+import           Data.Word
+import           Hispania.Types
 
 crlf :: BS.ByteString
-crlf = BS.pack "\r\n"
+crlf = "\r\n"
 sep :: BS.ByteString
-sep = BS.pack ":"
+sep = ":"
 space :: BS.ByteString
-space = BS.pack " "
+space = " "
 
 -- | Character classes
 
@@ -38,33 +39,32 @@ hostClass = alphaNumClass ++ "."
 
 methodByteStr :: RequestMethod -> BS.ByteString
 methodByteStr (Custom c) = c
-methodByteStr x = fromJust (lookup x methodMapBstr)
+methodByteStr x          = fromJust (lookup x methodMapBstr)
 
 intByteString :: Int -> BS.ByteString
-intByteString = BS.pack . show 
+intByteString = BS.pack . show
 
 wordByteString :: Word16 -> BS.ByteString
-wordByteString = BS.pack . show 
-
+wordByteString = BS.pack . show
 
 paramBuilder :: (BS.ByteString, BS.ByteString) -> Builder
-paramBuilder (name,value) = (fromByteString (BS.pack ";")) `mappend` (fromByteString name) `mappend` (fromByteString (BS.pack "=")) `mappend` (fromByteString value)
+paramBuilder (name,value) = (fromByteString ";") <> (fromByteString name) <> (fromByteString  "=") <> (fromByteString value)
 
 paramsBuilder :: [(BS.ByteString, BS.ByteString)] -> Builder
 paramsBuilder = mconcat . (map paramBuilder)
 
 uriBuilder :: URI -> Builder
-uriBuilder (RawURI schema specific) = (fromByteString schema) `mappend` (fromByteString sep) `mappend` (fromByteString specific)
-uriBuilder (SipURI secure uriUser uriPassword uriHost uriPort uriParams) = (fromByteString (BS.pack "sip")) `mappend` (fromByteString sep) `mappend` (fromByteString uriUser)  `mappend` (fromByteString (BS.pack "@")) `mappend` (fromByteString uriHost) `mappend` (maybe mempty (\x -> (fromByteString (BS.pack ":")) `mappend` (fromByteString (wordByteString x))) uriPort) `mappend` (paramsBuilder uriParams)
+uriBuilder (RawURI schema specific) = (fromByteString schema) <> (fromByteString sep) <> (fromByteString specific)
+uriBuilder (SipURI secure uriUser uriPassword uriHost uriPort uriParams) = (fromByteString "sip") <> (fromByteString sep) <> (fromByteString uriUser)  <> (fromByteString "@") <> (fromByteString uriHost) <> (maybe mempty (\x -> (fromByteString ":") <> (fromByteString (wordByteString x))) uriPort) <> (paramsBuilder uriParams)
 
 addressBuilder :: SipAddress -> Builder
-addressBuilder (SipAddress displayName uri addressParams) = displayNamePart `mappend` langle `mappend` (uriBuilder uri) `mappend` rangle `mappend` (paramsBuilder addressParams)
+addressBuilder (SipAddress displayName uri addressParams) = displayNamePart <> langle <> (uriBuilder uri) <> rangle <> (paramsBuilder addressParams)
    where
        displayNamePart = maybe mempty fromByteString displayName
-       langle = (fromByteString (BS.pack "<"))
-       rangle = (fromByteString (BS.pack ">"))
+       langle = (fromByteString "<")
+       rangle = (fromByteString ">")
 
-viaBuilder (ViaValue viaProtoVersion viaTransport viaHost viaPort viaParams) = (protoVersionBuilder viaProtoVersion) `mappend` (fromByteString (BS.pack "/") ) `mappend` (transportBuilder viaTransport) `mappend` (fromByteString space) `mappend` (fromByteString viaHost) `mappend` (fromByteString (BS.pack ":")) `mappend` (fromByteString (wordByteString viaPort)) `mappend` (paramsBuilder viaParams)
+viaBuilder (ViaValue viaProtoVersion viaTransport viaHost viaPort viaParams) = (protoVersionBuilder viaProtoVersion) <> (fromByteString "/" ) <> (transportBuilder viaTransport) <> (fromByteString space) <> (fromByteString viaHost) <> (fromByteString ":") <> (fromByteString (wordByteString viaPort)) <> (paramsBuilder viaParams)
 
 headerValBuilder :: Header -> Builder
 headerValBuilder (GenericHeader value) = fromByteString value
@@ -73,39 +73,39 @@ headerValBuilder (ViaHeader viaValue) = viaBuilder viaValue
 headerValBuilder (IntHeader value) = (fromByteString (intByteString value))
 
 headerBuilder :: (BS.ByteString, Header) -> Builder
-headerBuilder header =  (fromByteString (fst header)) `mappend` (fromByteString sep) `mappend` (headerValBuilder (snd header))
+headerBuilder header =  (fromByteString (fst header)) <> (fromByteString sep) <> (headerValBuilder (snd header))
 
 headersBuilder :: [(BS.ByteString, Header)] -> Builder
-headersBuilder = mconcat .  (map (`mappend` (fromByteString crlf))) . (map headerBuilder)
+headersBuilder = mconcat .  (map (<> (fromByteString crlf))) . (map headerBuilder)
 
 protoVersionBuilder :: ProtoVersion -> Builder
-protoVersionBuilder (ProtoVersion proto version) = (fromByteString proto) `mappend` (fromByteString (BS.pack "/") ) `mappend` (fromByteString version)
+protoVersionBuilder (ProtoVersion proto version) = (fromByteString proto) <> (fromByteString "/") <> (fromByteString version)
 
 transportBuilder :: Transport -> Builder
 transportBuilder (Unknown val) = fromByteString val
-transportBuilder UDP = fromByteString (BS.pack "UDP")
-transportBuilder TCP = fromByteString (BS.pack "TCP")
+transportBuilder UDP           = fromByteString "UDP"
+transportBuilder TCP           = fromByteString "TCP"
 
 requestBuilder :: Request BS.ByteString -> Builder
-requestBuilder (Request method uri protoVersion headers body) = startLine `mappend` (headersBuilder headers) `mappend` (fromByteString crlf) `mappend` (fromByteString body)
+requestBuilder (Request method uri protoVersion headers body) = startLine <> (headersBuilder headers) <> (fromByteString crlf) <> (fromByteString body)
     where
-        startLine = (fromByteString (methodByteStr method)) `mappend` (fromByteString space) `mappend` (uriBuilder uri) `mappend` (fromByteString space) `mappend` (protoVersionBuilder protoVersion) `mappend` (fromByteString crlf)
+        startLine = (fromByteString (methodByteStr method)) <> (fromByteString space) <> (uriBuilder uri) <> (fromByteString space) <> (protoVersionBuilder protoVersion) <> (fromByteString crlf)
 
 requestBuilder2:: Request () -> Builder
-requestBuilder2 (Request method uri protoVersion headers body) = startLine `mappend` (headersBuilder headers) `mappend` (fromByteString crlf)
+requestBuilder2 (Request method uri protoVersion headers body) = startLine <> (headersBuilder headers) <> (fromByteString crlf)
     where
-        startLine = (fromByteString (methodByteStr method)) `mappend` (fromByteString space) `mappend` (uriBuilder uri) `mappend` (fromByteString space) `mappend` (protoVersionBuilder protoVersion) `mappend` (fromByteString crlf)
+        startLine = (fromByteString (methodByteStr method)) <> (fromByteString space) <> (uriBuilder uri) <> (fromByteString space) <> (protoVersionBuilder protoVersion) <> (fromByteString crlf)
 
 
 responseBuilder :: Response BS.ByteString -> Builder
-responseBuilder (Response protoVersion status reason headers body) = startLine `mappend` (headersBuilder headers) `mappend` (fromByteString crlf) `mappend` (fromByteString body)
+responseBuilder (Response protoVersion status reason headers body) = startLine <> (headersBuilder headers) <> (fromByteString crlf) <> (fromByteString body)
     where
-        startLine = (protoVersionBuilder protoVersion) `mappend` (fromByteString space) `mappend` (fromByteString (intByteString status)) `mappend` (fromByteString space) `mappend` (fromByteString reason) `mappend` (fromByteString crlf)
+        startLine = (protoVersionBuilder protoVersion) <> (fromByteString space) <> (fromByteString (intByteString status)) <> (fromByteString space) <> (fromByteString reason) <> (fromByteString crlf)
 
 responseBuilder2 :: Response () -> Builder
-responseBuilder2 (Response protoVersion status reason headers body) = startLine `mappend` (headersBuilder headers) `mappend` (fromByteString crlf)
+responseBuilder2 (Response protoVersion status reason headers body) = startLine <> (headersBuilder headers) <> (fromByteString crlf)
     where
-        startLine = (protoVersionBuilder protoVersion) `mappend` (fromByteString space) `mappend` (fromByteString (intByteString status)) `mappend` (fromByteString space) `mappend` (fromByteString reason) `mappend` (fromByteString crlf)
+        startLine = (protoVersionBuilder protoVersion) <> (fromByteString space) <> (fromByteString (intByteString status)) <> (fromByteString space) <> (fromByteString reason) <> (fromByteString crlf)
 
 requestStartParser :: ATP.Parser(BS.ByteString, (BS.ByteString, BS.ByteString), (BS.ByteString, BS.ByteString) )
 requestStartParser = do
@@ -114,7 +114,7 @@ requestStartParser = do
                uri <- rawUriParser
                ATP.skipWhile isSpace
                protocol <- token
-               ATP.string (BS.pack "/")
+               ATP.string "/"
                version <- token
                ATP.string (crlf)
                return (method, uri, (protocol, version))
@@ -143,7 +143,7 @@ headerParser = do
            return (headerName, headerVal)
 
 headerParserMap :: Map.Map BS.ByteString (ATP.Parser Header)
-headerParserMap = Map.fromList [(BS.pack "From", address), (BS.pack "To", address), (BS.pack "Via", via), (BS.pack "Contact", address)]
+headerParserMap = Map.fromList [("From", address), ("To", address), ("Via", via), ("Contact", address)]
      where
         address = liftM AddressHeader addressParser
         via = liftM ViaHeader viaParser
@@ -169,21 +169,21 @@ rawRequestParser :: ATP.Parser ( (BS.ByteString, (BS.ByteString, BS.ByteString),
 rawRequestParser = do
             reqStart <- requestStartParser
             reqHeaders <- rawHeadersParser
-            delimeter <- ATP.string (BS.pack "\r\n\r\n")
+            delimeter <- ATP.string "\r\n\r\n"
             return (reqStart, reqHeaders)
 
 requestParser :: ATP.Parser (Request ())
 requestParser = do
             (method, (schema, specific), (proto, version) ) <- requestStartParser
             reqHeaders <- headersParser
-            delimeter <- ATP.string (BS.pack "\r\n\r\n")
+            delimeter <- ATP.string "\r\n\r\n"
             return (Request (Custom method) (RawURI schema specific) (ProtoVersion proto version) reqHeaders ())
 
 
 responseStartParser :: ATP.Parser((BS.ByteString, BS.ByteString), Int, BS.ByteString)
 responseStartParser = do
                protocol <- token
-               ATP.string (BS.pack "/")
+               ATP.string "/"
                version <- token
                ATP.skipWhile isSpace
                status <- ATPC.decimal
@@ -196,16 +196,16 @@ rawResponseParser :: ATP.Parser ( ((BS.ByteString, BS.ByteString), Int, BS.ByteS
 rawResponseParser = do
             resStart <- responseStartParser
             resHeaders <- rawHeadersParser
-            delimeter <- ATP.string (BS.pack "\r\n\r\n")
+            delimeter <- ATP.string "\r\n\r\n"
             return (resStart, resHeaders, ())
 
 responseParser :: ATP.Parser (Response ())
 responseParser = do
             ((proto, version), status, reason) <- responseStartParser
             resHeaders <- headersParser
-            delimeter <- ATP.string (BS.pack "\r\n\r\n")
+            delimeter <- ATP.string "\r\n\r\n"
             return (Response (ProtoVersion proto version) status reason resHeaders ())
-          
+
 
 tokenChar :: Word8 -> Bool
 tokenChar = ATP.inClass tokenClass
@@ -213,19 +213,19 @@ tokenChar = ATP.inClass tokenClass
 isSpace :: Word8 -> Bool
 isSpace = ((fromIntegral (ord ' ')) == )
 
-token :: ATP.Parser BS.ByteString 
+token :: ATP.Parser BS.ByteString
 token = ATP.takeWhile1 tokenChar
 
 rawViaParser :: ATP.Parser (BS.ByteString, BS.ByteString, BS.ByteString, BS.ByteString, Int, [(BS.ByteString, BS.ByteString)])
 rawViaParser = do
           proto <- token
-          ATP.string (BS.pack "/")
+          ATP.string "/"
           version <- token
-          ATP.string (BS.pack "/")
+          ATP.string "/"
           transport <- token
-          ATP.string (BS.pack " ")
+          ATP.string " "
           host <- token
-          ATP.string (BS.pack ":")
+          ATP.string ":"
           port <- ATPC.decimal
           paramsP <- paramsParser
           return (proto, version, transport, host, port, paramsP)
@@ -240,24 +240,24 @@ paramsParser = option [] (ATP.many1 paramParser)
 
 paramParser :: ATP.Parser (BS.ByteString, BS.ByteString)
 paramParser = do
-          ATP.string (BS.pack ";")
+          ATP.string ";"
           name <- token
-          ATP.string (BS.pack "=")
+          ATP.string "="
           value <- token
           return (name, value)
 
 rawUriParser :: ATP.Parser (BS.ByteString, BS.ByteString)
 rawUriParser = do
        schema <- ATP.takeWhile1 (not . (ATP.inClass " :"))
-       delim <- ATP.string (BS.pack ":")
+       delim <- ATP.string ":"
        specific <- ATP.takeWhile1 (not . (ATP.inClass " >"))
        return (schema, specific)
 
 uriParser :: ATP.Parser URI
 uriParser = do
        schema <- ATP.takeWhile1 (ATP.inClass schemaClass)
-       delim <- ATP.string (BS.pack ":")
-       if ((schema == (BS.pack "sip")) || (schema == (BS.pack "sips")))
+       delim <- ATP.string ":"
+       if ((schema == "sip") || (schema == "sips"))
           then sipUriParser schema
           else do
                  specific <- ATP.takeWhile1 (ATP.inClass opaqueUriPartClass)
@@ -265,22 +265,22 @@ uriParser = do
 
 bracketedUriParser :: ATP.Parser URI
 bracketedUriParser = do
-        ATP.string (BS.pack "<")
+        ATP.string "<"
         uri <- uriParser
-        ATP.string (BS.pack ">")
+        ATP.string ">"
         return uri
 
 rawSipUriParser :: ATP.Parser (BS.ByteString, BS.ByteString, Maybe Int, [(BS.ByteString, BS.ByteString)])
 rawSipUriParser = do
        user <- ATP.takeWhile1 (ATP.inClass userClass)
-       delimA <- ATP.string (BS.pack "@")
+       delimA <- ATP.string "@"
        host <- ATP.takeWhile1 (ATP.inClass hostClass)
        port <- option Nothing portParser
        paramsP <- paramsParser
        return (user, host, port, paramsP)
    where
        portParser = do
-                      delimB <- ATP.string (BS.pack ":")
+                      delimB <- ATP.string ":"
                       port <- ATPC.decimal
                       return (Just port)
 
@@ -288,7 +288,7 @@ rawSipUriParser = do
 sipUriParser :: BS.ByteString -> ATP.Parser URI
 sipUriParser schema = do
        (user, host, port, params) <- rawSipUriParser
-       return (SipURI (schema == (BS.pack "sips")) user BS.empty host (port >>= Just . fromIntegral) params)
+       return (SipURI (schema == "sips") user BS.empty host (port >>= Just . fromIntegral) params)
 
 
 addressParser :: ATP.Parser SipAddress
@@ -309,9 +309,9 @@ addressParser = do
 
 quotedNameParser :: ATP.Parser BS.ByteString
 quotedNameParser = do
-       ATP.string (BS.pack "\"")
+       ATP.string "\""
        result <- ATP.takeTill (ATP.inClass "\"\r\n")
-       ATP.string (BS.pack "\"")
+       ATP.string "\""
        return result
 
 messageParser :: ATP.Parser (Either (Response ()) (Request ()))

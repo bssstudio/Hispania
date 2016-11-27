@@ -1,16 +1,17 @@
 module Hispania.Transport where
 
-import Hispania.Types
-import Hispania.Parser
+import           Hispania.Parser
+import           Hispania.Types
 
-import Data.List
-import Data.Maybe
-import Data.Word
-import qualified Data.ByteString.Char8 as BS
-import Data.Attoparsec.ByteString as ATP
-import Network.Socket hiding (send, sendTo, recv, recvFrom)
-import Network.Socket.ByteString
-import Network.BSD
+import           Data.Attoparsec.ByteString as ATP
+import qualified Data.ByteString.Char8      as BS
+import           Data.List
+import           Data.Maybe
+import           Data.Word
+import           Network.BSD
+import           Network.Socket             hiding (recv, recvFrom, send,
+                                             sendTo)
+import           Network.Socket.ByteString
 
 maxline = 1500
 
@@ -36,7 +37,7 @@ class SocketPool a where
 
    getExistingForOut :: Direction -> a -> Maybe Socket
 
-instance SocketPool SocketPoolTCP where 
+instance SocketPool SocketPoolTCP where
 
    getExistingForOut direction (SocketPoolTCP storage) = fmap snd (find ((matchDirection direction) . fst) storage)
      where
@@ -44,12 +45,12 @@ instance SocketPool SocketPoolTCP where
        matchDirection (Direction (dest, Nothing )) (remote, local) = (dest == remote)
 
 
-instance SocketPool SocketPoolUDP where 
+instance SocketPool SocketPoolUDP where
 
    getExistingForOut direction (SocketPoolUDP storage) = fmap snd (find condition storage)
        where
-          condition = case (source direction) of 
-                        Nothing -> const True
+          condition = case (source direction) of
+                        Nothing   -> const True
                         Just addr -> ((addr==) . fst)
 
 
@@ -67,7 +68,7 @@ clearTransportLayer = TransportLayer (SocketPoolUDP []) (SocketPoolTCP [])
 
 
 receive:: TransportLayer -> IO (BS.ByteString, Direction, Transport)
-receive transportLayer = 
+receive transportLayer =
       do
         (mesg, remote) <- recvFrom sock maxline
         return (mesg, Direction (local, Just remote), UDP)
@@ -102,15 +103,15 @@ sendRawTo bytes direction transport transportLayer =
            return updatedTransportLayer
 
 
--- getSocketForOut transportLayer poolAccess direction = fromJust existing 
+-- getSocketForOut transportLayer poolAccess direction = fromJust existing
 --   where
 --     pool = poolAccess transportLayer
 --     existing = getExistingForOut direction pool
 
 getPort :: SockAddr -> Word16
-getPort (SockAddrInet (PortNum port) host) = port
+getPort (SockAddrInet (PortNum port) host)                   = port
 getPort (SockAddrInet6 (PortNum port) flowinfo host scopeid) = port
 
 getHost :: SockAddr -> BS.ByteString
-getHost (SockAddrInet port host) = BS.pack (show host)
+getHost (SockAddrInet port host)                   = BS.pack (show host)
 getHost (SockAddrInet6 port flowinfo host scopeid) = BS.pack (show host)
